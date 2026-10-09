@@ -8,8 +8,9 @@ Traefik — such as [hashi](https://github.com/eugene-panin/damstack-hashi). The
 
 One Nomad job, one group, three tasks sharing the group's network namespace:
 
-- **odoo** — the main task, the Odoo image with your custom addons baked in. It
-  reads `/local/odoo.conf`, rendered from Vault. Served by Traefik.
+- **odoo** — the main task, the base Odoo image. Addons come from the addons
+  volume at `/mnt/extra-addons`, not the image. It reads `/local/odoo.conf`,
+  rendered from Vault. Served by Traefik.
 - **postgres** — a prestart sidecar, PostgreSQL for Odoo, reachable at
   `127.0.0.1:5432` within the group.
 - **wait-db** — a prestart task that blocks until PostgreSQL answers, so Odoo
@@ -31,12 +32,17 @@ certificate through HTTP-01 by default). A second router sends `/websocket` to
 the longpolling port so Odoo's bus works. Odoo binds only the internal host
 network — it faces the internet only through Traefik.
 
-## Images
+## Images and addons
 
 Both images must be pinned by a fixed tag or a digest; the platform policy
-refuses `latest` or an untagged image. The Odoo image carries the custom addons
-in `/mnt/extra-addons` (see
-[docker-odoo](https://github.com/eugene-panin/docker-odoo)).
+refuses `latest` or an untagged image. The Odoo image is **base** — no addons
+baked in.
+
+Addons are delivered **separately** into the `<job_name>-addons` host volume,
+mounted at `/mnt/extra-addons` (on the addons_path). A client installs Odoo
+first and adds modules later: put the addon directories in that volume and
+restart Odoo, then install the module in Odoo — no image rebuild. The volume is
+owned by uid 101 (the Odoo user).
 
 ## Database
 
@@ -83,7 +89,7 @@ module "odoo" {
 | --- | --- | --- |
 | `hostname` | — | FQDN Odoo is served on |
 | `vault_kv_path` | — | Vault KV v2 mount the platform gives |
-| `odoo_image` | — | Odoo image with the addons, pinned |
+| `odoo_image` | `odoo:19.0` | base Odoo image, pinned (no addons baked) |
 | `postgres` | `{mode="bundled"}` | `bundled` (runs PostgreSQL in the job, `image`) or `external` (`host`, `port`, `admin_secret`) — see Database |
 | `job_name` | `odoo` | Nomad job, Consul service, Traefik routers |
 | `namespace` | `default` | Nomad namespace |

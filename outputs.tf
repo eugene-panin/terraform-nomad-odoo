@@ -13,6 +13,11 @@ output "filestore_volume" {
   value       = nomad_dynamic_host_volume.filestore.name
 }
 
+output "addons_volume" {
+  description = "Name of the dynamic host volume mounted at /mnt/extra-addons; deliver addons here (separately from the image) and restart Odoo to pick them up."
+  value       = nomad_dynamic_host_volume.addons.name
+}
+
 output "pgdata_volume" {
   description = "Name of the dynamic host volume holding the PostgreSQL data; null when an external database is used."
   value       = local.bundled ? nomad_dynamic_host_volume.pgdata[0].name : null

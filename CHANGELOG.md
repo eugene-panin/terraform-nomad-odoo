@@ -14,3 +14,9 @@
   internal host network.
 - `postgres.mode` switches between a bundled PostgreSQL (the default) and an
   external one shared with other apps.
+
+## v0.2.0
+
+- Base Odoo image; addons are no longer baked in. They are delivered separately
+  into the `<job_name>-addons` host volume, mounted at `/mnt/extra-addons`, so a
+  client installs Odoo first and adds modules later without rebuilding the image.

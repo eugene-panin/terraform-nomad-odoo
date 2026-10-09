@@ -82,6 +82,11 @@ run "the_job_renders" {
   }
 
   assert {
+    condition     = strcontains(nomad_job.odoo.jobspec, "destination = \"/mnt/extra-addons\"")
+    error_message = "Addons are delivered through a volume at /mnt/extra-addons, not baked into the image."
+  }
+
+  assert {
     condition     = strcontains(nomad_job.odoo.jobspec, "Host(`odoo.example.com`)")
     error_message = "The Traefik router does not route the hostname."
   }

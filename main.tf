@@ -5,6 +5,7 @@ locals {
   admin_secret_path = local.bundled ? "" : "${var.vault_kv_path}/data/${var.postgres.admin_secret}"
   secret_name       = "${var.namespace}/${var.job_name}/config"
   filestore_volume  = "${var.job_name}-filestore"
+  addons_volume     = "${var.job_name}-addons"
   pgdata_volume     = "${var.job_name}-pgdata"
   admin_password    = coalesce(var.admin_password, random_password.admin.result)
 
@@ -51,6 +52,25 @@ resource "nomad_dynamic_host_volume" "filestore" {
   }
 }
 
+# Addons are delivered separately into this volume, mounted at /mnt/extra-addons,
+# not baked into the image: a client installs Odoo, then adds modules later.
+resource "nomad_dynamic_host_volume" "addons" {
+  name      = local.addons_volume
+  namespace = var.namespace
+  plugin_id = "mkdir"
+
+  parameters = {
+    mode = "0755"
+    uid  = "101"
+    gid  = "101"
+  }
+
+  capability {
+    access_mode     = "single-node-writer"
+    attachment_mode = "file-system"
+  }
+}
+
 resource "nomad_dynamic_host_volume" "pgdata" {
   count = local.bundled ? 1 : 0
 
@@ -76,6 +96,7 @@ resource "nomad_job" "odoo" {
     namespace          = var.namespace
     datacenters        = var.datacenters
     filestore_volume   = nomad_dynamic_host_volume.filestore.name
+    addons_volume      = nomad_dynamic_host_volume.addons.name
     pgdata_volume      = local.bundled ? nomad_dynamic_host_volume.pgdata[0].name : ""
     bundled            = local.bundled
     db_host            = local.db_host

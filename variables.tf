@@ -35,8 +35,9 @@ variable "datacenters" {
 }
 
 variable "odoo_image" {
-  description = "Odoo container image, with the custom addons baked in, pinned by a fixed tag or a digest."
+  description = "Base Odoo container image, pinned by a fixed tag or a digest. No addons are baked in: they are delivered separately into the addons volume mounted at /mnt/extra-addons."
   type        = string
+  default     = "odoo:19.0"
 }
 
 variable "postgres" {

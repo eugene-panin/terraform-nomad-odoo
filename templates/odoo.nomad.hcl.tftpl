@@ -30,6 +30,13 @@ job "${job_name}" {
       attachment_mode = "file-system"
     }
 
+    volume "addons" {
+      type            = "host"
+      source          = "${addons_volume}"
+      access_mode     = "single-node-writer"
+      attachment_mode = "file-system"
+    }
+
 %{ if bundled ~}
     volume "pgdata" {
       type            = "host"
@@ -223,6 +230,11 @@ job "${job_name}" {
       volume_mount {
         volume      = "filestore"
         destination = "/var/lib/odoo"
+      }
+
+      volume_mount {
+        volume      = "addons"
+        destination = "/mnt/extra-addons"
       }
 
       vault {}
