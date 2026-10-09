@@ -1,0 +1,266 @@
+job "${job_name}" {
+  namespace   = "${namespace}"
+  datacenters = ${jsonencode(datacenters)}
+  type        = "service"
+
+  meta {
+    config_version = "${config_version}"
+    backup         = "stop"
+  }
+
+  group "odoo" {
+    network {
+      mode = "bridge"
+
+      port "http" {
+        to           = 8069
+        host_network = "${internal_network}"
+      }
+
+      port "longpolling" {
+        to           = 8072
+        host_network = "${internal_network}"
+      }
+    }
+
+    volume "filestore" {
+      type            = "host"
+      source          = "${filestore_volume}"
+      access_mode     = "single-node-writer"
+      attachment_mode = "file-system"
+    }
+
+%{ if bundled ~}
+    volume "pgdata" {
+      type            = "host"
+      source          = "${pgdata_volume}"
+      access_mode     = "single-node-writer"
+      attachment_mode = "file-system"
+    }
+%{ endif ~}
+
+    service {
+      name     = "${job_name}"
+      port     = "http"
+      provider = "consul"
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.${job_name}.rule=Host(`${hostname}`)",
+        "traefik.http.routers.${job_name}.entrypoints=${traefik.entrypoint}",
+        "traefik.http.routers.${job_name}.tls=true",
+        "traefik.http.routers.${job_name}.tls.certresolver=${traefik.certresolver}",
+      ]
+
+      check {
+        type     = "http"
+        path     = "/web/health"
+        interval = "15s"
+        timeout  = "5s"
+      }
+    }
+
+    service {
+      name     = "${job_name}-ws"
+      port     = "longpolling"
+      provider = "consul"
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.${job_name}-ws.rule=Host(`${hostname}`) && PathPrefix(`/websocket`)",
+        "traefik.http.routers.${job_name}-ws.entrypoints=${traefik.entrypoint}",
+        "traefik.http.routers.${job_name}-ws.priority=20",
+        "traefik.http.routers.${job_name}-ws.tls=true",
+        "traefik.http.routers.${job_name}-ws.tls.certresolver=${traefik.certresolver}",
+      ]
+
+      check {
+        type     = "tcp"
+        interval = "15s"
+        timeout  = "5s"
+      }
+    }
+
+%{ if bundled ~}
+    task "wait-db" {
+      driver = "docker"
+      user   = "999:999"
+
+      lifecycle {
+        hook    = "prestart"
+        sidecar = false
+      }
+
+      config {
+        image      = "${postgres_image}"
+        entrypoint = ["/bin/sh"]
+        args       = ["-c", "until pg_isready -h 127.0.0.1 -p 5432 -U odoo; do echo 'waiting for postgres'; sleep 2; done"]
+        cap_drop   = ["all"]
+      }
+
+      resources {
+        cpu    = 50
+        memory = 64
+      }
+    }
+
+    task "postgres" {
+      driver = "docker"
+      user   = "999:999"
+
+      lifecycle {
+        hook    = "prestart"
+        sidecar = true
+      }
+
+      config {
+        image    = "${postgres_image}"
+        cap_drop = ["all"]
+
+        mount {
+          type   = "tmpfs"
+          target = "/tmp"
+          tmpfs_options { size = 134217728 }
+        }
+
+        mount {
+          type   = "tmpfs"
+          target = "/run/postgresql"
+          tmpfs_options { size = 33554432 }
+        }
+      }
+
+      volume_mount {
+        volume      = "pgdata"
+        destination = "/var/lib/postgresql/data"
+      }
+
+      vault {}
+
+      env {
+        POSTGRES_USER = "odoo"
+        POSTGRES_DB   = "${db_name}"
+        PGDATA        = "/var/lib/postgresql/data/pgdata"
+      }
+
+      template {
+        destination = "secrets/postgres.env"
+        env         = true
+        data        = <<-EOT
+          {{ with secret "${secret_path}" }}POSTGRES_PASSWORD={{ .Data.data.db_password }}{{ end }}
+        EOT
+      }
+
+      resources {
+        cpu    = ${postgres_resources.cpu}
+        memory = ${postgres_resources.memory}
+      }
+    }
+%{ else ~}
+    task "create-db" {
+      driver = "docker"
+      user   = "999:999"
+
+      lifecycle {
+        hook    = "prestart"
+        sidecar = false
+      }
+
+      config {
+        image      = "${postgres_image}"
+        entrypoint = ["/bin/sh"]
+        args       = ["/local/create-db.sh"]
+        cap_drop   = ["all"]
+      }
+
+      vault {}
+
+      template {
+        destination = "secrets/admin.env"
+        env         = true
+        data        = <<-EOT
+          {{ with secret "${admin_secret_path}" }}PGADMIN_USER={{ .Data.data.username }}
+          PGADMIN_PASSWORD={{ .Data.data.password }}{{ end }}
+          {{ with secret "${secret_path}" }}ODOO_DB_PASSWORD={{ .Data.data.db_password }}{{ end }}
+        EOT
+      }
+
+      template {
+        destination = "local/create-db.sh"
+        data        = <<-EOT
+          set -eu
+          export PGPASSWORD="$PGADMIN_PASSWORD"
+          until pg_isready -h ${db_host} -p ${db_port} -U "$PGADMIN_USER"; do echo 'waiting for postgres'; sleep 2; done
+          PSQL="psql -v ON_ERROR_STOP=1 -h ${db_host} -p ${db_port} -U $PGADMIN_USER -d postgres"
+          $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname = 'odoo'" | grep -q 1 || $PSQL -c "CREATE ROLE odoo LOGIN"
+          $PSQL -v odoo_pw="$ODOO_DB_PASSWORD" -c "ALTER ROLE odoo WITH PASSWORD :'odoo_pw'"
+          $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${db_name}'" | grep -q 1 || $PSQL -c "CREATE DATABASE ${db_name} OWNER odoo"
+        EOT
+      }
+
+      resources {
+        cpu    = 100
+        memory = 128
+      }
+    }
+%{ endif ~}
+
+    task "odoo" {
+      driver = "docker"
+      user   = "101:101"
+
+      config {
+        image = "${odoo_image}"
+        args  = ["odoo", "-c", "/local/odoo.conf"]
+
+        cap_drop = ["all"]
+
+        mount {
+          type   = "tmpfs"
+          target = "/tmp"
+          tmpfs_options { size = 268435456 }
+        }
+      }
+
+      volume_mount {
+        volume      = "filestore"
+        destination = "/var/lib/odoo"
+      }
+
+      vault {}
+
+      env {
+        HOST = "${db_host}"
+        PORT = "${db_port}"
+        USER = "odoo"
+      }
+
+      template {
+        destination = "local/odoo.conf"
+        data        = <<-EOT
+          [options]
+          db_host = ${db_host}
+          db_port = ${db_port}
+          db_user = odoo
+          {{ with secret "${secret_path}" }}db_password = {{ .Data.data.db_password }}
+          admin_passwd = {{ .Data.data.admin_password }}{{ end }}
+          db_name = ${db_name}
+          dbfilter = ^${db_name}$$
+          list_db = False
+          proxy_mode = True
+          data_dir = /var/lib/odoo
+          addons_path = /mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
+          workers = ${workers}
+          gevent_port = 8072
+          http_port = 8069
+          http_interface = 0.0.0.0
+          limit_time_real = 600
+          without_demo = ${demo ? "False" : "all"}
+        EOT
+      }
+
+      resources {
+        cpu    = ${odoo_resources.cpu}
+        memory = ${odoo_resources.memory}
+      }
+    }
+  }
+}
