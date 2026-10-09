@@ -36,7 +36,7 @@ network — it faces the internet only through Traefik.
 Both images must be pinned by a fixed tag or a digest; the platform policy
 refuses `latest` or an untagged image. The Odoo image carries the custom addons
 in `/mnt/extra-addons` (see
-[docker-odoo-newo](https://github.com/eugene-panin/docker-odoo-newo)).
+[docker-odoo](https://github.com/eugene-panin/docker-odoo)).
 
 ## Database
 
@@ -72,7 +72,7 @@ module "odoo" {
   source = "git::https://github.com/eugene-panin/terraform-nomad-odoo.git?ref=v0.1.0"
 
   hostname      = "odoo.example.com"
-  odoo_image    = "ghcr.io/example/odoo-newo:19.0.1"
+  odoo_image    = "ghcr.io/example/odoo:19.0.1"
   vault_kv_path = var.vault_kv_path
 }
 ```
