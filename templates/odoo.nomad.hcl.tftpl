@@ -245,6 +245,17 @@ job "${job_name}" {
         USER = "odoo"
       }
 
+      # The official image's entrypoint defaults PASSWORD to "odoo" and passes it
+      # as --db_password, overriding odoo.conf. Set it to the real password so it
+      # does not.
+      template {
+        destination = "secrets/db.env"
+        env         = true
+        data        = <<-EOT
+          {{ with secret "${secret_path}" }}PASSWORD={{ .Data.data.db_password }}{{ end }}
+        EOT
+      }
+
       template {
         destination = "local/odoo.conf"
         data        = <<-EOT

@@ -31,3 +31,8 @@
 
 - create-db: set the role password by value, not a psql variable (which psql -c does
   not interpolate), fixing a syntax error on first start.
+
+## v0.2.3
+
+- Set the PASSWORD env from Vault, so the official image does not override the
+  odoo.conf db_password with its default "odoo" and fail authentication.
