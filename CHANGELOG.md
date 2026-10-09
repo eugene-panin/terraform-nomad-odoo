@@ -26,3 +26,8 @@
 - External mode: the shared PostgreSQL superuser credential is read at apply and
   kept in Odoo's own Vault secret, so the create-db task reads it from a path
   Odoo's workload identity may read (not the postgres app's, which it may not).
+
+## v0.2.2
+
+- create-db: set the role password by value, not a psql variable (which psql -c does
+  not interpolate), fixing a syntax error on first start.
