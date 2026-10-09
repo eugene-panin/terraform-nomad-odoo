@@ -9,13 +9,28 @@ locals {
   pgdata_volume     = "${var.job_name}-pgdata"
   admin_password    = coalesce(var.admin_password, random_password.admin.result)
 
-  config = {
-    db_password    = random_password.db.result
-    admin_password = local.admin_password
-  }
+  # In external mode the shared PostgreSQL's superuser credential is read here, at
+  # apply, and kept in Odoo's own secret — so the create-db task reads it from a
+  # path Odoo's workload identity may read, not the postgres app's (which it may not).
+  config = merge(
+    {
+      db_password    = random_password.db.result
+      admin_password = local.admin_password
+    },
+    local.bundled ? {} : {
+      pg_admin_username = data.vault_kv_secret_v2.pg_admin[0].data["username"]
+      pg_admin_password = data.vault_kv_secret_v2.pg_admin[0].data["password"]
+    },
+  )
   # Bumps whenever a secret changes, so the write-only secret is written again
   # and the job picks up the new config_version.
   config_version = parseint(substr(sha256(jsonencode(local.config)), 0, 8), 16)
+}
+
+data "vault_kv_secret_v2" "pg_admin" {
+  count = local.bundled ? 0 : 1
+  mount = var.vault_kv_path
+  name  = var.postgres.admin_secret
 }
 
 resource "random_password" "db" {

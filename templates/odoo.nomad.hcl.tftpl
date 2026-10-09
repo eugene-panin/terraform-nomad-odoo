@@ -184,9 +184,9 @@ job "${job_name}" {
         destination = "secrets/admin.env"
         env         = true
         data        = <<-EOT
-          {{ with secret "${admin_secret_path}" }}PGADMIN_USER={{ .Data.data.username }}
-          PGADMIN_PASSWORD={{ .Data.data.password }}{{ end }}
-          {{ with secret "${secret_path}" }}ODOO_DB_PASSWORD={{ .Data.data.db_password }}{{ end }}
+          {{ with secret "${secret_path}" }}PGADMIN_USER={{ .Data.data.pg_admin_username }}
+          PGADMIN_PASSWORD={{ .Data.data.pg_admin_password }}
+          ODOO_DB_PASSWORD={{ .Data.data.db_password }}{{ end }}
         EOT
       }
 

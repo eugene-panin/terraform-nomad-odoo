@@ -47,6 +47,13 @@ run "external_postgres_runs_no_database_task" {
     }
   }
 
+  override_data {
+    target = data.vault_kv_secret_v2.pg_admin
+    values = {
+      data = { username = "postgres", password = "secret" }
+    }
+  }
+
   assert {
     condition     = output.pgdata_volume == null
     error_message = "External mode must not create a PostgreSQL host volume."

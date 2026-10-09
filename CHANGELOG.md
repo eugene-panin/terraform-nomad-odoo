@@ -20,3 +20,9 @@
 - Base Odoo image; addons are no longer baked in. They are delivered separately
   into the `<job_name>-addons` host volume, mounted at `/mnt/extra-addons`, so a
   client installs Odoo first and adds modules later without rebuilding the image.
+
+## v0.2.1
+
+- External mode: the shared PostgreSQL superuser credential is read at apply and
+  kept in Odoo's own Vault secret, so the create-db task reads it from a path
+  Odoo's workload identity may read (not the postgres app's, which it may not).
