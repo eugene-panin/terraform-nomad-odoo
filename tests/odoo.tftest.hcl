@@ -180,6 +180,7 @@ run "it_joins_the_mesh_and_reaches_postgres_through_it" {
       && strcontains(nomad_job.odoo.jobspec, "name     = \"odoo-envoy\"")
       && strcontains(nomad_job.odoo.jobspec, "db_host = postgres.virtual.consul")
       && strcontains(nomad_job.odoo.jobspec, "ENVOY_UID = \"1337\"")
+      && strcontains(nomad_job.odoo.jobspec, "tags = [\"mesh-sidecar\"]")
     )
     error_message = "In the mesh Odoo must sit behind an Envoy sidecar, keep its web ports for Traefik, and reach PostgreSQL by its virtual name."
   }

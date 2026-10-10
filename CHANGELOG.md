@@ -61,3 +61,7 @@
 ## v0.2.7
 
 - In the mesh Envoy runs as uid 1337: Odoo runs as 101, Envoy's default, and the transparent proxy let its traffic out unredirected. The intentions entry exists only when some service is allowed.
+
+## v0.2.8
+
+- The mesh sidecar has its own tags (mesh-sidecar): with Odoo's Traefik tags on it too, Traefik saw the router twice and dropped it (404).

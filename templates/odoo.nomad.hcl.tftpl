@@ -81,6 +81,10 @@ job "${job_name}" {
       # directly, with the ports kept open and Envoy's metrics.
       connect {
         sidecar_service {
+          # Its own tags: the sidecar takes the service's otherwise, and a
+          # second service carrying the same Traefik router makes Traefik drop it.
+          tags = ["mesh-sidecar"]
+
           proxy {
             transparent_proxy {
               # Envoy runs as uid 1337, which no app uses: the transparent proxy
