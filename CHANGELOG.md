@@ -57,3 +57,7 @@
   intentions allow only `mesh.allow`. The web ports stay open for Traefik, which
   is outside the mesh. Envoy's metrics are an `<job_name>-envoy` service for
   Consul's topology.
+
+## v0.2.7
+
+- In the mesh Envoy runs as uid 1337: Odoo runs as 101, Envoy's default, and the transparent proxy let its traffic out unredirected. The intentions entry exists only when some service is allowed.

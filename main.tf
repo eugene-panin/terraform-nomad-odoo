@@ -150,8 +150,10 @@ resource "consul_config_entry" "defaults" {
   })
 }
 
+# Only when some service is allowed: Consul takes no intentions without a source,
+# and with none the platform's default deny already stands.
 resource "consul_config_entry" "intentions" {
-  count = var.mesh.enabled ? 1 : 0
+  count = var.mesh.enabled && length(var.mesh.allow) > 0 ? 1 : 0
 
   kind = "service-intentions"
   name = var.job_name

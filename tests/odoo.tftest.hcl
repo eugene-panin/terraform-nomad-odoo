@@ -179,12 +179,13 @@ run "it_joins_the_mesh_and_reaches_postgres_through_it" {
       && strcontains(nomad_job.odoo.jobspec, "exclude_inbound_ports = [\"8069\",\"8072\",\"9102\"]")
       && strcontains(nomad_job.odoo.jobspec, "name     = \"odoo-envoy\"")
       && strcontains(nomad_job.odoo.jobspec, "db_host = postgres.virtual.consul")
+      && strcontains(nomad_job.odoo.jobspec, "ENVOY_UID = \"1337\"")
     )
     error_message = "In the mesh Odoo must sit behind an Envoy sidecar, keep its web ports for Traefik, and reach PostgreSQL by its virtual name."
   }
 
   assert {
-    condition     = jsondecode(consul_config_entry.defaults[0].config_json).Protocol == "http" && jsondecode(consul_config_entry.intentions[0].config_json).Sources == []
-    error_message = "Odoo speaks http in the mesh, and no mesh service may reach it unless allowed."
+    condition     = jsondecode(consul_config_entry.defaults[0].config_json).Protocol == "http" && length(consul_config_entry.intentions) == 0
+    error_message = "Odoo speaks http in the mesh, and with no service allowed there is no intentions entry (the default deny stands)."
   }
 }
