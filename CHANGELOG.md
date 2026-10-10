@@ -48,3 +48,12 @@
 - Odoo reserves 512 MB and may grow to 2048 MB, a bundled PostgreSQL 768 MB up
   to 2048 MB: `memory_max` in `odoo_resources`/`postgres_resources` (Nomad memory
   oversubscription, which the platform turns on). They reserved more than they used.
+
+## v0.2.6
+
+- `mesh`: Odoo can join the Consul service mesh — an Envoy sidecar with the
+  transparent proxy, so it reaches mesh services (the shared PostgreSQL as
+  `postgres.virtual.consul`) over mTLS as their intentions allow; its own
+  intentions allow only `mesh.allow`. The web ports stay open for Traefik, which
+  is outside the mesh. Envoy's metrics are an `<job_name>-envoy` service for
+  Consul's topology.

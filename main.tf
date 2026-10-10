@@ -117,6 +117,7 @@ resource "nomad_job" "odoo" {
     db_host            = local.db_host
     db_port            = local.db_port
     dns_servers        = var.dns_servers
+    mesh               = var.mesh
     admin_secret_path  = local.admin_secret_path
     secret_path        = "${var.vault_kv_path}/data/${local.secret_name}"
     config_version     = local.config_version
@@ -135,4 +136,26 @@ resource "nomad_job" "odoo" {
   purge_on_destroy = true
 
   depends_on = [vault_kv_secret_v2.config]
+}
+
+# In the mesh: what Consul's L7 features see, and who may connect (intentions;
+# the platform's ACLs deny any other). Traefik reaches Odoo outside the mesh.
+resource "consul_config_entry" "defaults" {
+  count = var.mesh.enabled ? 1 : 0
+
+  kind = "service-defaults"
+  name = var.job_name
+  config_json = jsonencode({
+    Protocol = var.mesh.protocol
+  })
+}
+
+resource "consul_config_entry" "intentions" {
+  count = var.mesh.enabled ? 1 : 0
+
+  kind = "service-intentions"
+  name = var.job_name
+  config_json = jsonencode({
+    Sources = [for s in var.mesh.allow : { Name = s, Action = "allow" }]
+  })
 }

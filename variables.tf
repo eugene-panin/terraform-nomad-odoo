@@ -155,3 +155,24 @@ variable "postgres_resources" {
     error_message = "postgres_resources.memory_max must be at least postgres_resources.memory."
   }
 }
+
+variable "mesh" {
+  description = <<-EOT
+    The Consul service mesh. enabled puts Odoo behind an Envoy sidecar (transparent proxy):
+    it reaches mesh services — such as the shared PostgreSQL as postgres.virtual.consul —
+    over mTLS, as their intentions allow, and mesh services may reach it only if in allow.
+    Its web ports (8069, 8072) stay reachable outside the mesh, for Traefik; keep_open_ports
+    adds others. protocol is what Consul's L7 features see.
+  EOT
+  type = object({
+    enabled         = optional(bool, false)
+    allow           = optional(list(string), [])
+    keep_open_ports = optional(list(number), [])
+    protocol        = optional(string, "http")
+  })
+  default = {}
+  validation {
+    condition     = contains(["tcp", "http", "http2", "grpc"], var.mesh.protocol)
+    error_message = "mesh.protocol must be tcp, http, http2 or grpc."
+  }
+}

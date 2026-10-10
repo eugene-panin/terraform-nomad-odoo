@@ -1,3 +1,4 @@
+mock_provider "consul" {}
 mock_provider "nomad" {}
 mock_provider "random" {}
 mock_provider "vault" {}
@@ -149,5 +150,41 @@ run "memory_is_reserved_by_use_and_may_grow" {
   assert {
     condition     = strcontains(nomad_job.odoo.jobspec, "memory     = 512\n        memory_max = 2048") && strcontains(nomad_job.odoo.jobspec, "memory     = 768\n        memory_max = 2048")
     error_message = "Odoo and its bundled PostgreSQL must reserve their usual memory and be allowed to grow to memory_max."
+  }
+}
+
+run "it_joins_the_mesh_and_reaches_postgres_through_it" {
+  command = apply
+
+  variables {
+    postgres = {
+      mode         = "external"
+      host         = "postgres.virtual.consul"
+      admin_secret = "default/postgres/admin"
+    }
+    dns_servers = ["10.77.0.1"]
+    mesh        = { enabled = true }
+  }
+
+  override_data {
+    target = data.vault_kv_secret_v2.pg_admin
+    values = {
+      data = { username = "postgres", password = "secret" }
+    }
+  }
+
+  assert {
+    condition = (
+      strcontains(nomad_job.odoo.jobspec, "transparent_proxy")
+      && strcontains(nomad_job.odoo.jobspec, "exclude_inbound_ports = [\"8069\",\"8072\",\"9102\"]")
+      && strcontains(nomad_job.odoo.jobspec, "name     = \"odoo-envoy\"")
+      && strcontains(nomad_job.odoo.jobspec, "db_host = postgres.virtual.consul")
+    )
+    error_message = "In the mesh Odoo must sit behind an Envoy sidecar, keep its web ports for Traefik, and reach PostgreSQL by its virtual name."
+  }
+
+  assert {
+    condition     = jsondecode(consul_config_entry.defaults[0].config_json).Protocol == "http" && jsondecode(consul_config_entry.intentions[0].config_json).Sources == []
+    error_message = "Odoo speaks http in the mesh, and no mesh service may reach it unless allowed."
   }
 }

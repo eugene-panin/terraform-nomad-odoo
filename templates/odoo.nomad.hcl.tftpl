@@ -29,6 +29,14 @@ job "${job_name}" {
         to           = 8072
         host_network = "${internal_network}"
       }
+%{ if mesh.enabled ~}
+
+      # Envoy's metrics, scraped by the platform's Alloy for Consul's topology.
+      port "envoy_metrics" {
+        to           = 9102
+        host_network = "${internal_network}"
+      }
+%{ endif ~}
     }
 
     volume "filestore" {
@@ -66,6 +74,34 @@ job "${job_name}" {
         "traefik.http.routers.${job_name}.tls.certresolver=${traefik.certresolver}",
       ]
 
+%{ if mesh.enabled ~}
+      # In the mesh: an Envoy sidecar (transparent proxy) carries Odoo's traffic to
+      # mesh services, such as the shared PostgreSQL as postgres.virtual.consul,
+      # over mTLS. Traefik is not in the mesh, so the web ports stay reachable
+      # directly, with the ports kept open and Envoy's metrics.
+      connect {
+        sidecar_service {
+          proxy {
+            transparent_proxy {
+              no_dns                = true
+              exclude_inbound_ports = ${jsonencode(distinct(concat(["8069", "8072", "9102"], [for p in mesh.keep_open_ports : tostring(p)])))}
+            }
+            config {
+              envoy_prometheus_bind_addr = "0.0.0.0:9102"
+            }
+          }
+        }
+
+        sidecar_task {
+          resources {
+            cpu        = 50
+            memory     = 32
+            memory_max = 128
+          }
+        }
+      }
+
+%{ endif ~}
       check {
         type     = "http"
         path     = "/web/health"
@@ -93,6 +129,15 @@ job "${job_name}" {
         timeout  = "5s"
       }
     }
+%{ if mesh.enabled ~}
+
+    service {
+      name     = "${job_name}-envoy"
+      port     = "envoy_metrics"
+      provider = "consul"
+      tags     = ["metrics"]
+    }
+%{ endif ~}
 
 %{ if bundled ~}
     task "wait-db" {
