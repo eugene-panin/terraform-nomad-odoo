@@ -74,6 +74,12 @@ variable "postgres" {
   }
 }
 
+variable "dns_servers" {
+  description = "DNS servers the Odoo job resolves through, such as the platform's Consul DNS, so postgres.host can be a Consul service name (postgres.service.consul) and the shared PostgreSQL found wherever it runs. They must forward other names too. Empty: the node's resolvers."
+  type        = list(string)
+  default     = []
+}
+
 variable "db_name" {
   description = "Name of the Odoo database. dbfilter pins Odoo to exactly this one."
   type        = string

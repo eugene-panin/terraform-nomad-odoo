@@ -73,6 +73,40 @@ run "external_postgres_runs_no_database_task" {
     condition     = strcontains(nomad_job.odoo.jobspec, "db_host = 10.77.0.1")
     error_message = "External mode must point Odoo at the external database host."
   }
+
+  assert {
+    condition     = !strcontains(nomad_job.odoo.jobspec, "dns {")
+    error_message = "Without dns_servers the job keeps the node's resolvers."
+  }
+}
+
+run "external_postgres_by_its_consul_name" {
+  command = apply
+
+  variables {
+    postgres = {
+      mode         = "external"
+      host         = "postgres.service.consul"
+      admin_secret = "default/postgres/admin"
+    }
+    dns_servers = ["10.77.0.1"]
+  }
+
+  override_data {
+    target = data.vault_kv_secret_v2.pg_admin
+    values = {
+      data = { username = "postgres", password = "secret" }
+    }
+  }
+
+  assert {
+    condition = (
+      strcontains(nomad_job.odoo.jobspec, "servers = [\"10.77.0.1\"]")
+      && strcontains(nomad_job.odoo.jobspec, "db_host = postgres.service.consul")
+      && strcontains(nomad_job.odoo.jobspec, "pg_isready -h postgres.service.consul")
+    )
+    error_message = "Odoo must resolve through the given DNS and reach PostgreSQL by its Consul name."
+  }
 }
 
 run "the_job_renders" {

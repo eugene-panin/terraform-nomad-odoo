@@ -116,6 +116,7 @@ resource "nomad_job" "odoo" {
     bundled            = local.bundled
     db_host            = local.db_host
     db_port            = local.db_port
+    dns_servers        = var.dns_servers
     admin_secret_path  = local.admin_secret_path
     secret_path        = "${var.vault_kv_path}/data/${local.secret_name}"
     config_version     = local.config_version

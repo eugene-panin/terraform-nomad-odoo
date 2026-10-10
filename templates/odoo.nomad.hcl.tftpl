@@ -11,6 +11,14 @@ job "${job_name}" {
   group "odoo" {
     network {
       mode = "bridge"
+%{ if length(dns_servers) > 0 ~}
+
+      # Consul's DNS, which answers the database's service name and forwards
+      # the rest, so Odoo finds the shared PostgreSQL wherever it runs.
+      dns {
+        servers = ${jsonencode(dns_servers)}
+      }
+%{ endif ~}
 
       port "http" {
         to           = 8069

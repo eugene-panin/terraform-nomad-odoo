@@ -36,3 +36,9 @@
 
 - Set the PASSWORD env from Vault, so the official image does not override the
   odoo.conf db_password with its default "odoo" and fail authentication.
+
+## v0.2.4
+
+- `dns_servers`: the job resolves through them, such as the platform's Consul
+  DNS, so an external `postgres.host` can be a Consul service name
+  (`postgres.service.consul`) and the shared PostgreSQL found wherever it runs.

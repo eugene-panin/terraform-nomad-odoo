@@ -58,7 +58,9 @@ owned by uid 101 (the Odoo user).
   `postgres.admin_secret` (a Vault KV name under `vault_kv_path` holding
   `{username, password}`). A shared PostgreSQL app (e.g. `damstack-postgres`)
   gives host, port and admin_secret, and knows nothing about Odoo's database. Use
-  this when several apps share one PostgreSQL.
+  this when several apps share one PostgreSQL. `host` can be its Consul service
+  name (`postgres.service.consul`) when `dns_servers` points the job at the
+  platform's Consul DNS, so Odoo finds it wherever it runs.
 
 damstack has no app-to-app dependency, so `external` mode is wired by convention,
 not enforced: deploy the PostgreSQL app first, then Odoo.
@@ -91,6 +93,7 @@ module "odoo" {
 | `vault_kv_path` | — | Vault KV v2 mount the platform gives |
 | `odoo_image` | `odoo:19.0` | base Odoo image, pinned (no addons baked) |
 | `postgres` | `{mode="bundled"}` | `bundled` (runs PostgreSQL in the job, `image`) or `external` (`host`, `port`, `admin_secret`) — see Database |
+| `dns_servers` | `[]` | DNS servers the job resolves through (e.g. Consul DNS), for a `postgres.host` given as a Consul name; empty — the node's |
 | `job_name` | `odoo` | Nomad job, Consul service, Traefik routers |
 | `namespace` | `default` | Nomad namespace |
 | `datacenters` | `["*"]` | Nomad datacenters |
