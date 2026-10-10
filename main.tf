@@ -146,7 +146,11 @@ resource "consul_config_entry" "defaults" {
   kind = "service-defaults"
   name = var.job_name
   config_json = jsonencode({
-    Protocol = var.mesh.protocol
+    # As Consul stores it (with the empty blocks it fills in), so a plan sees no drift.
+    Protocol         = var.mesh.protocol
+    Expose           = {}
+    MeshGateway      = {}
+    TransparentProxy = {}
   })
 }
 
@@ -158,6 +162,8 @@ resource "consul_config_entry" "intentions" {
   kind = "service-intentions"
   name = var.job_name
   config_json = jsonencode({
-    Sources = [for s in var.mesh.allow : { Name = s, Action = "allow" }]
+    # As Consul stores it: Type consul, and Precedence 9 for an exact source and an
+    # exact destination; so a plan sees no drift.
+    Sources = [for s in var.mesh.allow : { Name = s, Action = "allow", Precedence = 9, Type = "consul" }]
   })
 }

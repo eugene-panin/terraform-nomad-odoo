@@ -65,3 +65,9 @@
 ## v0.2.8
 
 - The mesh sidecar has its own tags (mesh-sidecar): with Odoo's Traefik tags on it too, Traefik saw the router twice and dropped it (404).
+
+## v0.2.9
+
+- The mesh's config entries are written as Consul stores them (the empty
+  blocks it fills into service-defaults; Type and Precedence on each intention
+  source), so a plan no longer rewrites them on every apply.
