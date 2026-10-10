@@ -142,3 +142,12 @@ run "the_job_renders" {
     error_message = "Odoo must never bind the public host network; it faces the internet only through Traefik."
   }
 }
+
+run "memory_is_reserved_by_use_and_may_grow" {
+  command = apply
+
+  assert {
+    condition     = strcontains(nomad_job.odoo.jobspec, "memory     = 512\n        memory_max = 2048") && strcontains(nomad_job.odoo.jobspec, "memory     = 768\n        memory_max = 2048")
+    error_message = "Odoo and its bundled PostgreSQL must reserve their usual memory and be allowed to grow to memory_max."
+  }
+}

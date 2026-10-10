@@ -165,8 +165,9 @@ job "${job_name}" {
       }
 
       resources {
-        cpu    = ${postgres_resources.cpu}
-        memory = ${postgres_resources.memory}
+        cpu        = ${postgres_resources.cpu}
+        memory     = ${postgres_resources.memory}
+        memory_max = ${postgres_resources.memory_max}
       }
     }
 %{ else ~}
@@ -289,8 +290,9 @@ job "${job_name}" {
       }
 
       resources {
-        cpu    = ${odoo_resources.cpu}
-        memory = ${odoo_resources.memory}
+        cpu        = ${odoo_resources.cpu}
+        memory     = ${odoo_resources.memory}
+        memory_max = ${odoo_resources.memory_max}
       }
     }
   }

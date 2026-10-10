@@ -129,19 +129,29 @@ variable "traefik" {
 }
 
 variable "odoo_resources" {
-  description = "CPU (MHz) and memory (MB) for the Odoo task."
+  description = "CPU (MHz) and memory (MB) for the Odoo task: memory is what it reserves (sized to its use), memory_max how far it may grow (Nomad memory oversubscription)."
   type = object({
-    cpu    = optional(number, 1000)
-    memory = optional(number, 2048)
+    cpu        = optional(number, 1000)
+    memory     = optional(number, 512)
+    memory_max = optional(number, 2048)
   })
   default = {}
+  validation {
+    condition     = var.odoo_resources.memory_max >= var.odoo_resources.memory
+    error_message = "odoo_resources.memory_max must be at least odoo_resources.memory."
+  }
 }
 
 variable "postgres_resources" {
-  description = "CPU (MHz) and memory (MB) for the PostgreSQL task."
+  description = "CPU (MHz) and memory (MB) for the PostgreSQL task: memory is what it reserves (sized to its use), memory_max how far it may grow (Nomad memory oversubscription)."
   type = object({
-    cpu    = optional(number, 500)
-    memory = optional(number, 1024)
+    cpu        = optional(number, 500)
+    memory     = optional(number, 768)
+    memory_max = optional(number, 2048)
   })
   default = {}
+  validation {
+    condition     = var.postgres_resources.memory_max >= var.postgres_resources.memory
+    error_message = "postgres_resources.memory_max must be at least postgres_resources.memory."
+  }
 }

@@ -42,3 +42,9 @@
 - `dns_servers`: the job resolves through them, such as the platform's Consul
   DNS, so an external `postgres.host` can be a Consul service name
   (`postgres.service.consul`) and the shared PostgreSQL found wherever it runs.
+
+## v0.2.5
+
+- Odoo reserves 512 MB and may grow to 2048 MB, a bundled PostgreSQL 768 MB up
+  to 2048 MB: `memory_max` in `odoo_resources`/`postgres_resources` (Nomad memory
+  oversubscription, which the platform turns on). They reserved more than they used.
