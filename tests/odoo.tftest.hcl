@@ -174,6 +174,11 @@ run "it_joins_the_mesh_and_reaches_postgres_through_it" {
   }
 
   assert {
+    condition     = strcontains(nomad_job.odoo.jobspec, "local_service_port = 8069")
+    error_message = "Envoy must be told the port Odoo listens on inside the group, not the dynamic host port."
+  }
+
+  assert {
     condition = (
       strcontains(nomad_job.odoo.jobspec, "transparent_proxy")
       && strcontains(nomad_job.odoo.jobspec, "exclude_inbound_ports = [\"8069\",\"8072\",\"9102\"]")

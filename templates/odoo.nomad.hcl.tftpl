@@ -86,6 +86,10 @@ job "${job_name}" {
           tags = ["mesh-sidecar"]
 
           proxy {
+            # The port inside the group: Envoy passes the mesh's traffic to it there,
+            # not to the (dynamic) host port the service is registered with.
+            local_service_port = 8069
+
             transparent_proxy {
               # Envoy runs as uid 1337, which no app uses: the transparent proxy
               # lets Envoy's own uid out unredirected, so an app sharing it (Odoo
